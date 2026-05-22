@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>curl.io</title>
+  <link rel="stylesheet" href="/style.css" />
+  <script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- ───────── 메뉴 ───────── -->
+  <div id="menu">
+    <div class="menu-card">
+      <h1>curl<span>.io</span></h1>
+      <p class="tag">원판을 굴려 쏘는 멀티플레이어 FPS</p>
+      <input id="name" type="text" maxlength="16" placeholder="닉네임" autocomplete="off" />
+      <div class="skill-label">스킬 2개 선택</div>
+      <div id="skillpick"></div>
+      <button id="play">PLAY</button>
+      <div id="status" class="status"></div>
+      <div class="hint">
+        <b>WASD</b> 이동 · <b>마우스</b> 조준 · <b>좌클릭</b> 원판 · <b>우클릭</b> 큰 공<br />
+        <b>Shift</b> 스킬1 · <b>E</b> 스킬2 · <b>Space</b> 점프 · <b>Tab</b> 스코어보드
+      </div>
+    </div>
+  </div>
+
+  <!-- ───────── HUD ───────── -->
+  <div id="hud" class="hidden">
+    <div id="crosshair"><span></span><span></span><span></span><span></span></div>
+
+    <div id="killfeed"></div>
+
+    <div id="topright">
+      <div class="stat"><b id="score">0</b> KILLS</div>
+      <div class="stat"><span id="ping">--</span> ms</div>
+    </div>
+
+    <div id="hud-bottom">
+      <div id="healthwrap">
+        <div id="healthbar"></div>
+        <span id="healthtext">100</span>
+      </div>
+      <div id="weaponrow">
+        <div class="weapon" id="w-primary"><b>원판</b><i class="cd"></i></div>
+        <div class="weapon" id="w-secondary"><b>큰 공</b><i class="cd"></i></div>
+      </div>
+      <div id="skillrow">
+        <div class="skill" id="s0"><span class="key">SHIFT</span><b class="nm"></b><i class="cd"></i><u class="rdy"></u></div>
+        <div class="skill" id="s1"><span class="key">E</span><b class="nm"></b><i class="cd"></i><u class="rdy"></u></div>
+      </div>
+    </div>
+
+    <div id="bearings" class="hidden">SNIPER BEARINGS <b>2</b></div>
+
+    <div id="deathmsg" class="hidden">
+      <div class="big">제거됨</div>
+      <div class="sub">리스폰까지 <b id="respawn-ct">3</b>s</div>
+    </div>
+
+    <div id="lockmsg" class="hidden">화면을 클릭해 계속</div>
+
+    <div id="scoreboard" class="hidden"></div>
+  </div>
+
+  <script src="/shared/sim.js"></script>
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>
