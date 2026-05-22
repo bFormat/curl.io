@@ -21,12 +21,14 @@ export class HUD {
     this.weapons = null;
     this.skillDefs = null;
     this.skills = ['repulse', 'dash'];
+    this.mapName = '';
   }
 
-  configure(weapons, skillDefs, skills) {
+  configure(weapons, skillDefs, skills, mapName) {
     this.weapons = weapons;
     this.skillDefs = skillDefs;
     this.skills = skills;
+    this.mapName = mapName || '';
     [this.el.s0, this.el.s1].forEach((slot, i) => {
       const meta = SKILL_META[skills[i]] || { name: skills[i] };
       slot.querySelector('.nm').textContent = meta.name;
@@ -127,7 +129,7 @@ export class HUD {
       return `<tr${me}><td>${escapeHtml(p.name)}</td><td>${p.kills}</td><td>${p.deaths}</td><td>${p.score}</td></tr>`;
     }).join('');
     this.el.scoreboard.innerHTML =
-      `<h2>SCOREBOARD</h2><table>
+      `<h2>SCOREBOARD${this.mapName ? ' · ' + escapeHtml(this.mapName) : ''}</h2><table>
         <tr><th>플레이어</th><th>킬</th><th>데스</th><th>점수</th></tr>${rows}
       </table>`;
   }

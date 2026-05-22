@@ -6,17 +6,17 @@ const WEAPONS = {
   // 주무기 — 기본 원판
   disc: {
     speed: 45, radius: 0.25, damage: 25, knockback: 4,
-    cooldown: 450, ttl: 2500
+    cooldown: 450, ttl: 2500, bounces: 0
   },
-  // 보조 — 큰 공 (밀어내기)
+  // 보조 — 큰 공 (밀어내기). 벽/바닥에서 1회 바운스.
   pushball: {
     speed: 22, radius: 0.7, damage: 8, knockback: 18,
-    cooldown: 1600, ttl: 3000
+    cooldown: 1600, ttl: 3000, bounces: 1
   },
   // 스킬 투사체 — 저격 쇠구슬
   bearing: {
     speed: 90, radius: 0.1, damage: 55, knockback: 3,
-    cooldown: 450, ttl: 2000
+    cooldown: 450, ttl: 2000, bounces: 0
   }
 };
 

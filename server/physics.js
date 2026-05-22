@@ -20,24 +20,29 @@ function segmentSphere(p0, p1, center, R) {
   return t;
 }
 
-// 선분 p0→p1 vs AABB (반경 R 만큼 확장한 슬랩 테스트). 충돌 t 또는 -1.
+// 선분 p0→p1 vs AABB (반경 R 만큼 확장한 슬랩 테스트).
+// 충돌 시 {t, normal:{x,y,z}}(진입면 법선), 아니면 null.
 function segmentAABB(p0, p1, box, R) {
-  let tmin = 0, tmax = 1;
+  let tmin = 0, tmax = 1, axis = -1, axisSign = 0;
   const axes = ['x', 'y', 'z'];
-  for (const ax of axes) {
+  for (let k = 0; k < 3; k++) {
+    const ax = axes[k];
     const lo = box.min[ax] - R, hi = box.max[ax] + R;
     const o = p0[ax], d = p1[ax] - p0[ax];
     if (Math.abs(d) < 1e-9) {
-      if (o < lo || o > hi) return -1;
+      if (o < lo || o > hi) return null;
     } else {
       let t1 = (lo - o) / d, t2 = (hi - o) / d;
+      const entrySign = d > 0 ? -1 : 1; // 진입면의 바깥 법선 부호
       if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
-      if (t1 > tmin) tmin = t1;
+      if (t1 > tmin) { tmin = t1; axis = k; axisSign = entrySign; }
       if (t2 < tmax) tmax = t2;
-      if (tmin > tmax) return -1;
+      if (tmin > tmax) return null;
     }
   }
-  return tmin;
+  const normal = { x: 0, y: 0, z: 0 };
+  if (axis >= 0) normal[axes[axis]] = axisSign;
+  return { t: tmin, normal };
 }
 
 // 점이 AABB 내부(반경 R 확장)인지
