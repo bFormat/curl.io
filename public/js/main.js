@@ -24,6 +24,7 @@ const self = { pos: { x: 0, y: 0, z: 0 }, vel: { x: 0, y: 0, z: 0 }, yaw: 0, pit
 const posError = { x: 0, y: 0, z: 0 };
 let pending = [], inputSeq = 0, prevJump = false;
 let you = null, started = false, positioned = false, wasAlive = true;
+let vmWeapon = null;
 
 const snapshots = [];
 let latestPlayers = [];
@@ -136,6 +137,12 @@ net.on('SNAPSHOT', (msg) => {
     positioned = true;
   }
 
+  // 활성 주무기 바뀌면 뷰모델 갱신
+  if (you.loadout && you.loadout.primary !== vmWeapon) {
+    vmWeapon = you.loadout.primary;
+    renderer.setViewmodel(vmWeapon);
+  }
+
   // 사망 전환 시 포인터락 해제 → 리스폰 패널 클릭 가능
   if (wasAlive && !you.alive) {
     chargingPrimary = false;
@@ -155,9 +162,11 @@ function handleEvent(ev) {
     if (ev.victimId) renderer.flashPlayer(ev.victimId);
     const isSelf = ev.victimId === selfId;
     if (isSelf) renderer.shake(0.5);
+    if (ev.attackerId === selfId && !isSelf) hud.hitmarker(false);
     audio.hit(isSelf ? 1 : volAt(ev.x, ev.z));
   } else if (ev.kind === 'kill') {
     hud.pushKill(ev);
+    if (ev.killerId === selfId) hud.hitmarker(true);
     if (ev.x != null) {
       renderer.burst(pos, 0xff8a5c, 2);
       renderer.debris(pos, 0xff6b6b, 12);
@@ -247,6 +256,7 @@ function setupInput() {
         net.send({ type: 'FIRE_RELEASE', slot: 'primary', yaw: self.yaw, pitch: self.pitch });
         chargingPrimary = false;
         audio.fire('arrow');
+        renderer.viewmodelRecoil();
       } else {
         fireHeld.primary = false;
       }
@@ -294,6 +304,7 @@ function tryFire(slot, now) {
   if (now < nextFire[slot]) return;
   net.send({ type: 'FIRE_START', slot, yaw: self.yaw, pitch: self.pitch });
   audio.fire(effType(slot));
+  if (slot === 'primary') renderer.viewmodelRecoil();
   nextFire[slot] = now + cooldownFor(slot);
 }
 

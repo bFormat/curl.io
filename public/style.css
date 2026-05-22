@@ -89,6 +89,28 @@ canvas#game { position: fixed; inset: 0; display: block; }
 #crosshair span:nth-child(3) { top: 50%; left: 0; height: 2px; width: 7px; margin-top: -1px; }
 #crosshair span:nth-child(4) { top: 50%; right: 0; height: 2px; width: 7px; margin-top: -1px; }
 
+/* Overwatch식 히트마커 — 적중 시 대각선 X 플래시 */
+#hitmarker {
+  position: absolute; left: 50%; top: 50%;
+  width: 44px; height: 44px; transform: translate(-50%, -50%);
+  opacity: 0; pointer-events: none;
+}
+#hitmarker span {
+  position: absolute; width: 14px; height: 3px;
+  background: #fff; box-shadow: 0 0 3px #000;
+}
+#hitmarker span:nth-child(1) { left: 2px; top: 8px; transform: rotate(45deg); }
+#hitmarker span:nth-child(2) { right: 2px; top: 8px; transform: rotate(-45deg); }
+#hitmarker span:nth-child(3) { left: 2px; bottom: 8px; transform: rotate(-45deg); }
+#hitmarker span:nth-child(4) { right: 2px; bottom: 8px; transform: rotate(45deg); }
+#hitmarker.hit { animation: hitmark .34s ease-out; }
+#hitmarker.kill span { background: #ff4d4d; height: 4px; width: 17px; }
+@keyframes hitmark {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(1.7) rotate(0deg); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.75) rotate(0deg); }
+}
+
 #chargebar {
   position: absolute; left: 50%; top: calc(50% + 26px); transform: translateX(-50%);
   width: 150px; height: 9px; background: #11161f;

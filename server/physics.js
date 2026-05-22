@@ -20,8 +20,9 @@ function segmentSphere(p0, p1, center, R) {
   return t;
 }
 
-// 선분 p0→p1 vs AABB (반경 R 만큼 확장한 슬랩 테스트).
-// 충돌 시 {t, normal:{x,y,z}}(진입면 법선), 아니면 null.
+// 선분 p0→p1 vs AABB (반경 R). 충돌 시 {t, normal}, 아니면 null.
+// 슬랩 테스트(박스를 R만큼 확장)는 모서리에서 과대판정하므로,
+// 진입점에서 원본 박스까지 실제 거리를 검사해 모서리 오탐을 제거한다.
 function segmentAABB(p0, p1, box, R) {
   let tmin = 0, tmax = 1, axis = -1, axisSign = 0;
   const axes = ['x', 'y', 'z'];
@@ -33,13 +34,23 @@ function segmentAABB(p0, p1, box, R) {
       if (o < lo || o > hi) return null;
     } else {
       let t1 = (lo - o) / d, t2 = (hi - o) / d;
-      const entrySign = d > 0 ? -1 : 1; // 진입면의 바깥 법선 부호
+      const entrySign = d > 0 ? -1 : 1;
       if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
       if (t1 > tmin) { tmin = t1; axis = k; axisSign = entrySign; }
       if (t2 < tmax) tmax = t2;
       if (tmin > tmax) return null;
     }
   }
+  // 진입점에서 원본 박스까지 실제 거리 검사 (모서리 둥글림)
+  const cx = p0.x + (p1.x - p0.x) * tmin;
+  const cy = p0.y + (p1.y - p0.y) * tmin;
+  const cz = p0.z + (p1.z - p0.z) * tmin;
+  const qx = Math.max(box.min.x, Math.min(cx, box.max.x));
+  const qy = Math.max(box.min.y, Math.min(cy, box.max.y));
+  const qz = Math.max(box.min.z, Math.min(cz, box.max.z));
+  const dx = cx - qx, dy = cy - qy, dz = cz - qz;
+  if (dx * dx + dy * dy + dz * dz > (R * 1.06) * (R * 1.06)) return null;
+
   const normal = { x: 0, y: 0, z: 0 };
   if (axis >= 0) normal[axes[axis]] = axisSign;
   return { t: tmin, normal };

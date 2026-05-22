@@ -107,18 +107,85 @@ export class Renderer {
     grid.position.y = 0.02;
     this.scene.add(grid);
 
-    map.obstacles.forEach((b, i) => {
+    const KIND_COLOR = {
+      wall: 0x3a4661, pillar: 0xc06b4f, floor: 0x6f7e93,
+      stair: 0x8c99aa, crate: 0xb98a52
+    };
+    map.obstacles.forEach((b) => {
       const sx = b.max.x - b.min.x, sy = b.max.y - b.min.y, sz = b.max.z - b.min.z;
-      const isWall = i < 4;
       const mesh = new THREE.Mesh(
         new THREE.BoxGeometry(sx, sy, sz),
-        new THREE.MeshLambertMaterial({ color: isWall ? 0x3a4661 : 0xc06b4f })
+        new THREE.MeshLambertMaterial({ color: KIND_COLOR[b.kind] || 0x3a4661 })
       );
       mesh.position.set((b.min.x + b.max.x) / 2, (b.min.y + b.max.y) / 2, (b.min.z + b.max.z) / 2);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       this.scene.add(mesh);
     });
+  }
+
+  // ── 1인칭 뷰모델 (무기) ─────────────────────────────────────
+  _ensureViewmodel() {
+    if (this.vm) return;
+    this.scene.add(this.camera);          // 카메라 자식이 렌더되도록
+    this.vm = new THREE.Group();
+    this.vm.position.set(0.32, -0.3, -0.62);
+    this.camera.add(this.vm);
+    this.vmWeapon = null;
+    this.vmRecoil = 0;
+    this.vmBob = 0;
+    this.vmLastCam = null;
+    // 손 (간단한 박스)
+    const hand = new THREE.Mesh(
+      new THREE.BoxGeometry(0.12, 0.12, 0.34),
+      new THREE.MeshLambertMaterial({ color: 0xd9a06b })
+    );
+    hand.position.set(-0.04, -0.06, 0.12);
+    this.vm.add(hand);
+  }
+
+  setViewmodel(weaponId) {
+    this._ensureViewmodel();
+    if (this.vmWeapon) {
+      this.vm.remove(this.vmWeapon);
+      this.vmWeapon.geometry.dispose();
+      this.vmWeapon.material.dispose();
+    }
+    let geo, color;
+    if (weaponId === 'ironball') { geo = new THREE.SphereGeometry(0.09, 12, 10); color = 0x9aa6b4; }
+    else if (weaponId === 'pencil') { geo = new THREE.CylinderGeometry(0.022, 0.022, 0.46, 8); color = 0xf4c542; }
+    else if (weaponId === 'bow') { geo = new THREE.TorusGeometry(0.24, 0.025, 8, 16, Math.PI * 1.2); color = 0xd9b38c; }
+    else if (weaponId === 'eraser') { geo = new THREE.BoxGeometry(0.2, 0.12, 0.3); color = 0xff9ec4; }
+    else { geo = new THREE.CylinderGeometry(0.13, 0.13, 0.05, 18); color = 0xffd23f; }  // disc
+    const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color }));
+    if (weaponId === 'pencil') mesh.rotation.x = Math.PI / 2;
+    else if (weaponId === 'disc') mesh.rotation.x = Math.PI / 2;
+    else if (weaponId === 'bow') mesh.rotation.y = Math.PI / 2;
+    mesh.position.set(0, 0, -0.18);
+    this.vm.add(mesh);
+    this.vmWeapon = mesh;
+  }
+
+  viewmodelRecoil() { this.vmRecoil = Math.min(1, this.vmRecoil + 0.7); }
+
+  _updateViewmodel(camPos, dt) {
+    if (!this.vm) return;
+    // 이동 보브
+    let spd = 0;
+    if (this.vmLastCam) {
+      spd = Math.hypot(camPos.x - this.vmLastCam.x, camPos.z - this.vmLastCam.z) / Math.max(dt, 1e-3);
+    }
+    this.vmLastCam = { x: camPos.x, z: camPos.z };
+    this.vmBob += dt * Math.min(spd, 9) * 1.6;
+    const bobAmt = Math.min(spd, 8) * 0.004;
+    this.vmRecoil *= Math.pow(0.0009, dt);
+    if (this.vmRecoil < 0.01) this.vmRecoil = 0;
+    this.vm.position.set(
+      0.32 + Math.cos(this.vmBob) * bobAmt,
+      -0.3 + Math.abs(Math.sin(this.vmBob)) * bobAmt - this.vmRecoil * 0.04,
+      -0.62 + this.vmRecoil * 0.12
+    );
+    this.vm.rotation.x = this.vmRecoil * 0.5;
   }
 
   // ── 캐릭터 모델 (마인크래프트식 6파트) ──────────────────────
@@ -431,6 +498,7 @@ export class Renderer {
     } else {
       this.camera.rotation.z = 0;
     }
+    this._updateViewmodel(camPos, dt);
     this.renderer.render(this.scene, this.camera);
   }
 }

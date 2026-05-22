@@ -28,9 +28,9 @@ const PRIMARY = {
   },
   eraser: {
     name: '지우개', ptype: 'eraser', trajectory: 'straight',
-    speed: 16, radius: 0.3, damage: 30, knockback: 10,
-    cooldown: 1400, ttl: 3500, bounces: 0,
-    grow: { startRadius: 0.3, maxRadius: 1.0, growTime: 1500, minDmg: 30, maxDmg: 100 }
+    speed: 16, radius: 0.3, damage: 20, knockback: 10,
+    cooldown: 1400, ttl: 5500, bounces: 0,
+    grow: { startRadius: 0.3, maxRadius: 1.0, growTime: 3500, minDmg: 20, maxDmg: 100 }
   }
 };
 

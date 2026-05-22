@@ -18,7 +18,8 @@ export class HUD {
       killfeed: $('killfeed'), bearings: $('bearings'),
       death: $('deathmsg'), respawnCt: $('respawn-ct'),
       lock: $('lockmsg'), scoreboard: $('scoreboard'),
-      chargebar: $('chargebar'), chargefill: $('chargefill')
+      chargebar: $('chargebar'), chargefill: $('chargefill'),
+      hitmarker: $('hitmarker')
     };
     this.defs = null;
     this.mapName = '';
@@ -117,6 +118,15 @@ export class HUD {
       this.el.killfeed.removeChild(this.el.killfeed.firstChild);
     }
     setTimeout(() => div.remove(), 5500);
+  }
+
+  // 적중 히트마커 — 애니메이션 재시작을 위해 클래스 토글 + 리플로우
+  hitmarker(kill) {
+    const el = this.el.hitmarker;
+    el.classList.remove('hit', 'kill');
+    void el.offsetWidth;
+    el.classList.add('hit');
+    if (kill) el.classList.add('kill');
   }
 
   showLock(show) { this.el.lock.classList.toggle('hidden', !show); }
