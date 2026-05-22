@@ -1,11 +1,12 @@
-/* hud.js — 체력/탄/스킬쿨/킬피드/스코어보드 DOM 갱신. */
+/* hud.js — 체력/무기·스킬쿨/차지바/킬피드/스코어보드 DOM 갱신. v0.2 */
+import { CATALOG } from './loadout.js';
+
 const $ = (id) => document.getElementById(id);
 
-const SKILL_META = {
-  repulse: { ic: '✷', name: 'Repulse' },
-  bearing: { ic: '◉', name: 'Bearings' },
-  dash:    { ic: '↣', name: 'Dash' }
-};
+const BY_ID = {};
+for (const k of ['primary', 'secondary', 'skills']) {
+  for (const it of CATALOG[k]) BY_ID[it.id] = it;
+}
 
 export class HUD {
   constructor() {
@@ -16,27 +17,26 @@ export class HUD {
       s0: $('s0'), s1: $('s1'),
       killfeed: $('killfeed'), bearings: $('bearings'),
       death: $('deathmsg'), respawnCt: $('respawn-ct'),
-      lock: $('lockmsg'), scoreboard: $('scoreboard')
+      lock: $('lockmsg'), scoreboard: $('scoreboard'),
+      chargebar: $('chargebar'), chargefill: $('chargefill')
     };
-    this.weapons = null;
-    this.skillDefs = null;
-    this.skills = ['repulse', 'dash'];
+    this.defs = null;
     this.mapName = '';
   }
 
-  configure(weapons, skillDefs, skills, mapName) {
-    this.weapons = weapons;
-    this.skillDefs = skillDefs;
-    this.skills = skills;
+  configure(defs, mapName) {
+    this.defs = defs;          // {primary, secondary, skills, bearingProj}
     this.mapName = mapName || '';
-    [this.el.s0, this.el.s1].forEach((slot, i) => {
-      const meta = SKILL_META[skills[i]] || { name: skills[i] };
-      slot.querySelector('.nm').textContent = meta.name;
-    });
     this.el.hud.classList.remove('hidden');
   }
 
   setPing(rtt) { this.el.ping.textContent = Math.round(rtt); }
+
+  setCharge(active, frac) {
+    if (!active) { this.el.chargebar.classList.add('hidden'); return; }
+    this.el.chargebar.classList.remove('hidden');
+    this.el.chargefill.style.width = Math.max(0, Math.min(1, frac)) * 100 + '%';
+  }
 
   _cd(el, readyAt, total, now) {
     const bar = el.querySelector('.cd');
@@ -50,7 +50,6 @@ export class HUD {
   }
 
   update(you, now) {
-    // 체력
     const hp = Math.max(0, you.hp);
     this.el.health.style.width = hp + '%';
     this.el.healthText.textContent = Math.round(hp);
@@ -58,33 +57,37 @@ export class HUD {
       ? 'linear-gradient(#5ce06a,#2faf42)'
       : hp > 25 ? 'linear-gradient(#ffd23f,#d99a1f)'
       : 'linear-gradient(#ff6b6b,#c93b3b)';
-
     this.el.score.textContent = you.score;
 
-    // 무기 쿨다운
-    const primType = you.bearings > 0 ? 'bearing' : 'disc';
-    this._cd(this.el.wp, you.fire.primary, this.weapons[primType].cooldown, now);
-    this._cd(this.el.ws, you.fire.secondary, this.weapons.pushball.cooldown, now);
-    this.el.wp.querySelector('b').textContent = you.bearings > 0 ? '쇠구슬' : '원판';
+    const lo = you.loadout || { primary: 'disc', secondary: 'pushball', skills: ['repulse', 'dash'] };
+    const bearing = you.bearings > 0;
 
-    // 스킬 쿨다운
+    // 주무기
+    const pIc = bearing ? '◎' : (BY_ID[lo.primary] || {}).ic || '?';
+    const pNm = bearing ? '쇠구슬' : (BY_ID[lo.primary] || {}).name || lo.primary;
+    const pCd = bearing ? this.defs.bearingProj.cooldown : this.defs.primary[lo.primary].cooldown;
+    this.el.wp.querySelector('.ic').textContent = pIc;
+    this.el.wp.querySelector('.nm').textContent = pNm;
+    this._cd(this.el.wp, you.fire.primary, pCd, now);
+
+    // 보조무기
+    const sec = BY_ID[lo.secondary] || {};
+    this.el.ws.querySelector('.ic').textContent = sec.ic || '?';
+    this.el.ws.querySelector('.nm').textContent = sec.name || lo.secondary;
+    this._cd(this.el.ws, you.fire.secondary, this.defs.secondary[lo.secondary].cooldown, now);
+
+    // 스킬 2슬롯
     [this.el.s0, this.el.s1].forEach((slot, i) => {
-      const id = you.skills[i];
-      const def = this.skillDefs[id];
-      if (!def) return;
-      const readyAt = (you.cd && you.cd[id]) || 0;
-      const remain = this._cd(slot, readyAt, def.cooldown, now);
+      const id = lo.skills[i];
+      const def = this.defs.skills[id];
+      slot.querySelector('.nm').textContent = (BY_ID[id] || {}).name || id || '-';
+      if (!def) { slot.querySelector('.cd').style.height = '0%'; return; }
+      const remain = this._cd(slot, (you.cd && you.cd[id]) || 0, def.cooldown, now);
       const rdy = slot.querySelector('.rdy');
-      if (remain > 0) {
-        slot.classList.remove('ready');
-        rdy.textContent = Math.ceil(remain / 1000) + 's';
-      } else {
-        slot.classList.add('ready');
-        rdy.textContent = '';
-      }
+      if (remain > 0) { slot.classList.remove('ready'); rdy.textContent = Math.ceil(remain / 1000) + 's'; }
+      else { slot.classList.add('ready'); rdy.textContent = ''; }
     });
 
-    // 쇠구슬 장전 표시
     if (you.bearings > 0) {
       this.el.bearings.classList.remove('hidden');
       this.el.bearings.querySelector('b').textContent = you.bearings;
@@ -92,7 +95,6 @@ export class HUD {
       this.el.bearings.classList.add('hidden');
     }
 
-    // 사망 오버레이
     if (!you.alive) {
       this.el.death.classList.remove('hidden');
       const left = you.respawnAt ? Math.max(0, Math.ceil((you.respawnAt - now) / 1000)) : 0;
@@ -106,9 +108,9 @@ export class HUD {
     const div = document.createElement('div');
     div.className = 'kf';
     if (ev.killerName) {
-      div.innerHTML = `<span class="a">${escapeHtml(ev.killerName)}</span> ⟶ <span class="v">${escapeHtml(ev.victimName)}</span>`;
+      div.innerHTML = `<span class="a">${esc(ev.killerName)}</span> ⟶ <span class="v">${esc(ev.victimName)}</span>`;
     } else {
-      div.innerHTML = `<span class="v">${escapeHtml(ev.victimName)}</span> 자멸`;
+      div.innerHTML = `<span class="v">${esc(ev.victimName)}</span> 자멸`;
     }
     this.el.killfeed.appendChild(div);
     while (this.el.killfeed.children.length > 5) {
@@ -117,25 +119,23 @@ export class HUD {
     setTimeout(() => div.remove(), 5500);
   }
 
-  showLock(show) {
-    this.el.lock.classList.toggle('hidden', !show);
-  }
+  showLock(show) { this.el.lock.classList.toggle('hidden', !show); }
 
   showScoreboard(show, players, selfId) {
     this.el.scoreboard.classList.toggle('hidden', !show);
     if (!show) return;
     const rows = [...players].sort((a, b) => b.score - a.score).map((p) => {
       const me = p.id === selfId ? ' class="me"' : '';
-      return `<tr${me}><td>${escapeHtml(p.name)}</td><td>${p.kills}</td><td>${p.deaths}</td><td>${p.score}</td></tr>`;
+      return `<tr${me}><td>${esc(p.name)}</td><td>${p.kills}</td><td>${p.deaths}</td><td>${p.score}</td></tr>`;
     }).join('');
     this.el.scoreboard.innerHTML =
-      `<h2>SCOREBOARD${this.mapName ? ' · ' + escapeHtml(this.mapName) : ''}</h2><table>
+      `<h2>SCOREBOARD${this.mapName ? ' · ' + esc(this.mapName) : ''}</h2><table>
         <tr><th>플레이어</th><th>킬</th><th>데스</th><th>점수</th></tr>${rows}
       </table>`;
   }
 }
 
-function escapeHtml(s) {
+function esc(s) {
   return String(s).replace(/[&<>"]/g, (c) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }

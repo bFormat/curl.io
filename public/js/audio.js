@@ -61,16 +61,55 @@ export class Sfx {
 
   fire(type) {
     if (!this.ctx) return;
-    if (type === 'pushball') {
-      this.tone({ f0: 220, f1: 70, type: 'sine', dur: 0.22, vol: 0.5 });
-      this.noise({ dur: 0.18, vol: 0.22, freq: 500 });
-    } else if (type === 'bearing') {
-      this.tone({ f0: 1900, f1: 600, type: 'square', dur: 0.1, vol: 0.3 });
-      this.noise({ dur: 0.06, vol: 0.28, type: 'highpass', freq: 3000 });
-    } else {
-      this.tone({ f0: 720, f1: 280, type: 'triangle', dur: 0.12, vol: 0.32 });
-      this.noise({ dur: 0.08, vol: 0.18, freq: 1800 });
+    switch (type) {
+      case 'pushball':
+        this.tone({ f0: 220, f1: 70, type: 'sine', dur: 0.22, vol: 0.5 });
+        this.noise({ dur: 0.18, vol: 0.22, freq: 500 });
+        break;
+      case 'bearing':
+        this.tone({ f0: 1900, f1: 600, type: 'square', dur: 0.1, vol: 0.3 });
+        this.noise({ dur: 0.06, vol: 0.28, type: 'highpass', freq: 3000 });
+        break;
+      case 'ironball':
+        this.tone({ f0: 200, f1: 58, type: 'square', dur: 0.2, vol: 0.42 });
+        this.noise({ dur: 0.12, vol: 0.26, freq: 700 });
+        break;
+      case 'pencil':
+        this.tone({ f0: 1500, f1: 820, type: 'square', dur: 0.06, vol: 0.2 });
+        this.noise({ dur: 0.04, vol: 0.16, type: 'highpass', freq: 2600 });
+        break;
+      case 'arrow':
+        this.tone({ f0: 420, f1: 190, type: 'triangle', dur: 0.16, vol: 0.32 });
+        this.noise({ dur: 0.1, vol: 0.2, freq: 1100 });
+        break;
+      case 'eraser':
+        this.tone({ f0: 170, f1: 95, type: 'sine', dur: 0.3, vol: 0.4 });
+        this.noise({ dur: 0.2, vol: 0.18, freq: 420 });
+        break;
+      case 'stickybomb':
+        this.tone({ f0: 320, f1: 170, type: 'sine', dur: 0.16, vol: 0.32 });
+        break;
+      case 'jumppack':
+        this.tone({ f0: 160, f1: 700, type: 'sawtooth', dur: 0.3, vol: 0.36 });
+        this.noise({ dur: 0.28, vol: 0.3, type: 'bandpass', freq: 1300 });
+        break;
+      default: // disc
+        this.tone({ f0: 720, f1: 280, type: 'triangle', dur: 0.12, vol: 0.32 });
+        this.noise({ dur: 0.08, vol: 0.18, freq: 1800 });
     }
+  }
+
+  bowDraw() {
+    this.tone({ f0: 160, f1: 320, type: 'sine', dur: 0.5, vol: 0.16 });
+  }
+
+  explosion(vol = 1) {
+    this.tone({ f0: 180, f1: 38, type: 'sawtooth', dur: 0.6, vol: 0.55 * vol });
+    this.noise({ dur: 0.5, vol: 0.45 * vol, freq: 500 });
+  }
+
+  stick(vol = 1) {
+    this.tone({ f0: 600, f1: 380, type: 'triangle', dur: 0.07, vol: 0.26 * vol });
   }
 
   hit(vol = 1) {

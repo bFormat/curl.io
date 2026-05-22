@@ -79,7 +79,7 @@ wss.on('connection', (ws) => {
       const name = String(msg.name || 'player').slice(0, 16).trim() || 'player';
       const id = crypto.randomUUID();
       room = matchmaker.assign();
-      player = room.addPlayer(id, name, ws, msg.skills);
+      player = room.addPlayer(id, name, ws, msg.loadout);
       console.log(`[join] ${name} (${id.slice(0, 8)}) → ${room.id} (${room.size}/10)`);
       return;
     }
@@ -88,8 +88,10 @@ wss.on('connection', (ws) => {
 
     switch (msg.type) {
       case C2S.INPUT: room.handleInput(player, msg); break;
-      case C2S.FIRE: room.handleFire(player, msg); break;
+      case C2S.FIRE_START: room.handleFire(player, 'start', msg); break;
+      case C2S.FIRE_RELEASE: room.handleFire(player, 'release', msg); break;
       case C2S.USE_SKILL: room.handleSkill(player, msg); break;
+      case C2S.SET_LOADOUT: room.handleSetLoadout(player, msg); break;
     }
   });
 

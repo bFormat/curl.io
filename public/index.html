@@ -18,13 +18,13 @@
       <h1>curl<span>.io</span></h1>
       <p class="tag">원판을 굴려 쏘는 멀티플레이어 FPS</p>
       <input id="name" type="text" maxlength="16" placeholder="닉네임" autocomplete="off" />
-      <div class="skill-label">스킬 2개 선택</div>
-      <div id="skillpick"></div>
+      <div id="menu-loadout"></div>
       <button id="play">PLAY</button>
       <div id="status" class="status"></div>
       <div class="hint">
-        <b>WASD</b> 이동 · <b>마우스</b> 조준 · <b>좌클릭</b> 원판 · <b>우클릭</b> 큰 공<br />
-        <b>Shift</b> 스킬1 · <b>E</b> 스킬2 · <b>Space</b> 점프 · <b>Tab</b> 스코어보드
+        <b>WASD</b> 이동 · <b>마우스</b> 조준 · <b>좌클릭</b> 주무기 · <b>우클릭</b> 보조<br />
+        <b>Shift</b> 스킬1 · <b>E</b> 스킬2 · <b>Space</b> 점프 · <b>Tab</b> 스코어보드<br />
+        활은 좌클릭을 <b>눌러 차징</b>, 떼면 발사
       </div>
     </div>
   </div>
@@ -40,14 +40,16 @@
       <div class="stat"><span id="ping">--</span> ms</div>
     </div>
 
+    <div id="chargebar" class="hidden"><div id="chargefill"></div></div>
+
     <div id="hud-bottom">
       <div id="healthwrap">
         <div id="healthbar"></div>
         <span id="healthtext">100</span>
       </div>
       <div id="weaponrow">
-        <div class="weapon" id="w-primary"><b>원판</b><i class="cd"></i></div>
-        <div class="weapon" id="w-secondary"><b>큰 공</b><i class="cd"></i></div>
+        <div class="weapon" id="w-primary"><span class="ic"></span><b class="nm"></b><i class="cd"></i></div>
+        <div class="weapon" id="w-secondary"><span class="ic"></span><b class="nm"></b><i class="cd"></i></div>
       </div>
       <div id="skillrow">
         <div class="skill" id="s0"><span class="key">SHIFT</span><b class="nm"></b><i class="cd"></i><u class="rdy"></u></div>
@@ -60,6 +62,8 @@
     <div id="deathmsg" class="hidden">
       <div class="big">제거됨</div>
       <div class="sub">리스폰까지 <b id="respawn-ct">3</b>s</div>
+      <div class="dm-title">다음 리스폰 장비 선택</div>
+      <div id="death-loadout"></div>
     </div>
 
     <div id="lockmsg" class="hidden">화면을 클릭해 계속</div>
