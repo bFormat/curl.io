@@ -34,7 +34,7 @@ const keys = {};
 const fireHeld = { primary: false, secondary: false };
 const nextFire = { primary: 0, secondary: 0 };
 let chargingPrimary = false, chargeStartPerf = 0;
-let locked = false, acc = 0, lastFrame = performance.now();
+let locked = false, acc = 0, hudAcc = 0, lastFrame = performance.now();
 
 const serverNow = () => lastSnap.t + (performance.now() - lastSnap.perf);
 const PROJ_COLOR = {
@@ -368,25 +368,31 @@ function interpolate(tt) {
   return { players };
 }
 
+// 프레임당 할당 0 — scratch 객체 재사용 (syncProjectiles가 동기적으로 소비)
+const projScratch = [];
 function extrapolatedProjectiles(sn) {
-  if (snapshots.length === 0) return [];
+  if (snapshots.length === 0) { projScratch.length = 0; return projScratch; }
   const last = snapshots[snapshots.length - 1];
   let age = (sn - last.t) / 1000;
   if (age < 0) age = 0;
   if (age > 0.3) age = 0.3;
-  const out = [];
+  let n = 0;
   for (const id in last.projectiles) {
     const p = last.projectiles[id];
     const arc = p.arc && p.state !== 'stuck';
-    out.push({
-      id, ptype: p.ptype, spin: p.spin, radius: p.radius, state: p.state,
-      x: p.x + p.vx * age,
-      y: p.y + p.vy * age - (arc ? 0.5 * PROJ_G * age * age : 0),
-      z: p.z + p.vz * age,
-      vx: p.vx, vy: arc ? p.vy - PROJ_G * age : p.vy, vz: p.vz
-    });
+    let o = projScratch[n];
+    if (!o) o = projScratch[n] = {};
+    o.id = id; o.ptype = p.ptype; o.spin = p.spin; o.radius = p.radius; o.state = p.state;
+    o.x = p.x + p.vx * age;
+    o.y = p.y + p.vy * age - (arc ? 0.5 * PROJ_G * age * age : 0);
+    o.z = p.z + p.vz * age;
+    o.vx = p.vx;
+    o.vy = arc ? p.vy - PROJ_G * age : p.vy;
+    o.vz = p.vz;
+    n++;
   }
-  return out;
+  projScratch.length = n;
+  return projScratch;
 }
 
 // ───────── 메인 루프 ─────────
@@ -428,9 +434,14 @@ function loop(now) {
   };
   renderer.render(camPos, self.yaw, self.pitch, dt);
 
-  if (you) hud.update(you, sn);
-  hud.setPing(net.rtt);
+  // HUD는 60fps로 갱신할 필요 없음 — DOM 쓰기 비용 절감 (차지바/락만 매프레임)
   hud.setCharge(chargingPrimary, defs ? (performance.now() - chargeStartPerf) / defs.primary.bow.charge.maxHold : 0);
   hud.showLock(started && !locked && (!you || you.alive));
-  hud.showScoreboard(!!keys['Tab'], latestPlayers, selfId);
+  hudAcc += dt;
+  if (hudAcc >= 0.05) {
+    hudAcc = 0;
+    if (you) hud.update(you, sn);
+    hud.setPing(net.rtt);
+    hud.showScoreboard(!!keys['Tab'], latestPlayers, selfId);
+  }
 }

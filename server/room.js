@@ -536,20 +536,22 @@ class Room {
     const events = this.events;
     this.events = [];
 
+    // 공유 부분(players/projectiles/events)은 1회만 직렬화 — 클라별로 ack/you만 다름
+    const shared = '"players":' + JSON.stringify(players)
+      + ',"projectiles":' + JSON.stringify(projectiles)
+      + ',"events":' + JSON.stringify(events);
+
     for (const p of this.players.values()) {
-      this.send(p, {
-        type: S2C.SNAPSHOT,
-        t: now,
-        ack: p.lastInputSeq,
-        players, projectiles, events,
-        you: {
-          hp: p.hp, alive: p.alive, respawnAt: p.respawnAt,
-          score: p.score, kills: p.kills, deaths: p.deaths,
-          cd: p.cooldowns, fire: p.fireReady,
-          bearings: p.buffs.sniperBearings ? p.buffs.sniperBearings.charges : 0,
-          loadout: p.loadout
-        }
+      if (!p.ws || p.ws.readyState !== 1) continue;
+      const you = JSON.stringify({
+        hp: p.hp, alive: p.alive, respawnAt: p.respawnAt,
+        score: p.score, kills: p.kills, deaths: p.deaths,
+        cd: p.cooldowns, fire: p.fireReady,
+        bearings: p.buffs.sniperBearings ? p.buffs.sniperBearings.charges : 0,
+        loadout: p.loadout
       });
+      p.ws.send('{"type":"SNAPSHOT","t":' + now + ',"ack":' + p.lastInputSeq
+        + ',' + shared + ',"you":' + you + '}');
     }
   }
 }
