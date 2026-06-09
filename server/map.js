@@ -106,4 +106,4 @@ function pickMap() {
   return MAPS[Math.floor(Math.random() * MAPS.length)];
 }
 
-module.exports = { MAPS, pickMap };
+module.exports = { pickMap };

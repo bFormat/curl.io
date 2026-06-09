@@ -56,11 +56,4 @@ function segmentAABB(p0, p1, box, R) {
   return { t: tmin, normal };
 }
 
-// 점이 AABB 내부(반경 R 확장)인지
-function pointInAABB(p, box, R) {
-  return p.x >= box.min.x - R && p.x <= box.max.x + R &&
-         p.y >= box.min.y - R && p.y <= box.max.y + R &&
-         p.z >= box.min.z - R && p.z <= box.max.z + R;
-}
-
-module.exports = { segmentSphere, segmentAABB, pointInAABB };
+module.exports = { segmentSphere, segmentAABB };

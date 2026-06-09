@@ -36,7 +36,24 @@ class Room {
     this.projSeq = 0;
     this.tickCount = 0;
     this.onEmpty = onEmpty;
-    this.timer = setInterval(() => this.tick(), TICK_MS);
+    // setInterval은 OS 스케줄러에 따라 누적 드리프트가 생기므로
+    // 다음 틱 시각을 기준으로 self-schedule (장시간 룸에서도 30Hz 유지)
+    this._nextTickAt = Date.now() + TICK_MS;
+    this._stopped = false;
+    this._scheduleTick();
+  }
+
+  _scheduleTick() {
+    if (this._stopped) return;
+    const delay = Math.max(0, this._nextTickAt - Date.now());
+    this.timer = setTimeout(() => {
+      this._nextTickAt += TICK_MS;
+      // 큰 일시 정지(브레이크포인트 등) 후엔 캐치업 대신 현재 시각 재기준
+      const drift = Date.now() - this._nextTickAt;
+      if (drift > TICK_MS * 4) this._nextTickAt = Date.now() + TICK_MS;
+      this.tick();
+      this._scheduleTick();
+    }, delay);
   }
 
   get size() { return this.players.size; }
@@ -97,7 +114,8 @@ class Room {
     this.projectiles = this.projectiles.filter((p) => p.ownerId !== id);
     if (this.status === 'full' && this.size < MAX_PLAYERS) this.status = 'open';
     if (this.size === 0) {
-      clearInterval(this.timer);
+      this._stopped = true;
+      clearTimeout(this.timer);
       if (this.onEmpty) this.onEmpty(this);
     }
   }
@@ -189,10 +207,10 @@ class Room {
                 this.fireWeapon(p, 'primary', w, yaw, pitch, now, null);
               }
             }
-          } else if (p.charge) { // release
+          } else if (p.charge) { // release — 차징 시작 시점의 무기로 발사
             const hold = now - p.charge.startAt;
             p.charge = null;
-            this.fireWeapon(p, 'primary', PRIMARY.bow, yaw, pitch, now, hold);
+            this.fireWeapon(p, 'primary', PRIMARY[p.loadout.primary], yaw, pitch, now, hold);
           }
         } else if (ev.phase === 'start') { // secondary
           this.fireWeapon(p, 'secondary', SECONDARY[p.loadout.secondary], yaw, pitch, now, null);
@@ -475,7 +493,7 @@ class Room {
       victim.skillQueue.length = 0;
       victim.buffs = {};
       victim.charge = null;
-      if (attacker && attacker !== victim && attacker.alive !== undefined) {
+      if (attacker && attacker !== victim) {
         attacker.score++;
         attacker.kills++;
       }
@@ -523,7 +541,8 @@ class Room {
         vx: p.vel.x, vy: p.vel.y, vz: p.vel.z,
         yaw: p.yaw, pitch: p.pitch,
         hp: p.hp, alive: p.alive, score: p.score,
-        kills: p.kills, deaths: p.deaths
+        kills: p.kills, deaths: p.deaths,
+        g: p.grounded ? 1 : 0   // 클라 reconciliation에서 가속 모델 일치용
       });
     }
     const projectiles = this.projectiles.map((pr) => ({

@@ -1,13 +1,17 @@
 {
   "name": "curl-io",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "curl.io — 원판을 굴려 쏘는 멀티플레이어 FPS (krunker식 io 게임)",
   "type": "commonjs",
   "main": "server/index.js",
   "scripts": {
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "test": "node test/smoke.js"
   },
   "dependencies": {
     "ws": "^8.20.1"
+  },
+  "devDependencies": {
+    "three": "0.160.0"
   }
 }

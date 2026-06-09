@@ -46,7 +46,9 @@ function volAt(x, z) {
   const d = Math.hypot((x || 0) - self.pos.x, (z || 0) - self.pos.z);
   return Math.max(0.12, Math.min(1, 1 - d / 45));
 }
-const isPrimaryCharge = () => loadout.primary === 'bow' && !(you && you.bearings > 0);
+// 발사/쿨다운/뷰모델 판정은 서버 권위 loadout을 본다. 첫 SNAPSHOT 전에는 로컬 선택 fallback.
+function activeLoadout() { return (you && you.loadout) || loadout; }
+const isPrimaryCharge = () => activeLoadout().primary === 'bow' && !(you && you.bearings > 0);
 
 // ───────── 메뉴 ─────────
 const playBtn = document.getElementById('play');
@@ -57,25 +59,51 @@ playBtn.onclick = () => {
   audio.init();
   audio.resume();
   playBtn.disabled = true;
-  statusEl.style.color = '#9fb0c8';
-  statusEl.textContent = '서버 연결 중...';
+  // 연결될 때마다(첫 연결 + 재접속) JOIN을 다시 보낸다 — 서버는 새 selfId로 입장 처리
   net.connect(
     () => {
+      resetSession();
       const name = (document.getElementById('name').value || '').trim() || 'curler';
       net.send({ type: 'JOIN', name, loadout });
     },
-    () => {
-      statusEl.style.color = '#ff6b6b';
-      statusEl.textContent = '연결이 끊겼습니다. 새로고침하세요.';
-    }
+    onConnStatus
   );
 };
 
-net.on('ERROR', (m) => {
-  statusEl.style.color = '#ff6b6b';
-  statusEl.textContent = m.message || '입장 실패';
-  playBtn.disabled = false;
-});
+const toastEl = document.getElementById('conntoast');
+function onConnStatus(st) {
+  if (st.state === 'connecting') {
+    statusEl.style.color = '#9fb0c8';
+    statusEl.textContent = st.attempt > 0 ? `재접속 시도 ${st.attempt}...` : '서버 연결 중...';
+    if (st.attempt > 0) { toastEl.classList.remove('hidden'); toastEl.textContent = `재접속 시도 ${st.attempt}...`; }
+  } else if (st.state === 'open') {
+    statusEl.textContent = '';
+    toastEl.classList.add('hidden');
+  } else if (st.state === 'lost') {
+    statusEl.style.color = '#ffd23f';
+    statusEl.textContent = '연결 끊김 — 재접속 중...';
+    toastEl.classList.remove('hidden'); toastEl.textContent = '연결 끊김 — 재접속 중';
+  } else if (st.state === 'gone') {
+    statusEl.style.color = '#ff6b6b';
+    statusEl.textContent = '서버에 닿을 수 없습니다. 새로고침하세요.';
+    toastEl.classList.remove('hidden'); toastEl.textContent = '서버에 닿을 수 없습니다 — 새로고침';
+    playBtn.disabled = false;
+  }
+}
+
+// 재접속 시 세션 상태를 깨끗이 리셋 — 새 selfId로 처음부터.
+function resetSession() {
+  selfId = null;
+  positioned = false;
+  pending = [];
+  inputSeq = 0;
+  snapshots.length = 0;
+  latestPlayers = [];
+  you = null;
+  vmWeapon = null;
+  chargingPrimary = false;
+  posError.x = posError.y = posError.z = 0;
+}
 
 net.on('WELCOME', (m) => {
   selfId = m.selfId;
@@ -117,12 +145,14 @@ net.on('SNAPSHOT', (msg) => {
     if (!you.alive) {
       self.pos = { x: srv.x, y: srv.y, z: srv.z };
       self.vel = { x: srv.vx, y: srv.vy, z: srv.vz };
+      self.grounded = !!srv.g;
       pending = [];
       posError.x = posError.y = posError.z = 0;
     } else {
       const before = { x: self.pos.x, y: self.pos.y, z: self.pos.z };
       self.pos = { x: srv.x, y: srv.y, z: srv.z };
       self.vel = { x: srv.vx, y: srv.vy, z: srv.vz };
+      self.grounded = !!srv.g;  // 가감속 모델이 한 틱 어긋나지 않도록
       pending = pending.filter((i) => i.seq > msg.ack);
       for (const inp of pending) Sim.step(self, inp, inp.dt, map);
       if (positioned) {
@@ -239,6 +269,8 @@ function setupInput() {
     if (!you || !you.alive) return;
     if (e.button === 0) {
       if (isPrimaryCharge()) {
+        // 클라 쿨다운 — 서버도 같은 조건으로 거부하므로, 차징 UI가 거짓말하지 않도록 같이 막는다
+        if (serverNow() < nextFire.primary) return;
         net.send({ type: 'FIRE_START', slot: 'primary', yaw: self.yaw, pitch: self.pitch });
         chargingPrimary = true;
         chargeStartPerf = performance.now();
@@ -257,6 +289,7 @@ function setupInput() {
         chargingPrimary = false;
         audio.fire('arrow');
         renderer.viewmodelRecoil();
+        nextFire.primary = serverNow() + cooldownFor('primary');
       } else {
         fireHeld.primary = false;
       }
@@ -285,17 +318,19 @@ function useSkill(slot) {
 }
 
 function effType(slot) {
+  const lo = activeLoadout();
   if (slot === 'primary') {
-    return you.bearings > 0 ? 'bearing' : defs.primary[loadout.primary].ptype;
+    return you.bearings > 0 ? 'bearing' : defs.primary[lo.primary].ptype;
   }
-  const w = defs.secondary[loadout.secondary];
+  const w = defs.secondary[lo.secondary];
   return w.kind === 'instant' ? 'jumppack' : w.ptype;
 }
 function cooldownFor(slot) {
+  const lo = activeLoadout();
   if (slot === 'primary') {
-    return you.bearings > 0 ? defs.bearingProj.cooldown : defs.primary[loadout.primary].cooldown;
+    return you.bearings > 0 ? defs.bearingProj.cooldown : defs.primary[lo.primary].cooldown;
   }
-  return defs.secondary[loadout.secondary].cooldown;
+  return defs.secondary[lo.secondary].cooldown;
 }
 
 function tryFire(slot, now) {
@@ -315,8 +350,8 @@ function stepInput() {
     move: { f: !!keys['KeyW'], b: !!keys['KeyS'], l: !!keys['KeyA'], r: !!keys['KeyD'] },
     jump: !!keys['Space'], yaw: self.yaw, pitch: self.pitch
   };
-  const grounded = self.pos.y <= 0.03;
-  if (input.jump && !prevJump && grounded) audio.jump();
+  // Sim.step이 채워주는 멀티레벨 grounded — 상자/2층에서도 점프음이 난다
+  if (input.jump && !prevJump && self.grounded) audio.jump();
   prevJump = input.jump;
 
   net.send(input);

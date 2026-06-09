@@ -1,7 +1,6 @@
 /* server/protocol.js — 메시지 타입 상수 + 직렬화 헬퍼 */
 'use strict';
 
-// C→S
 const C2S = {
   JOIN: 'JOIN',
   INPUT: 'INPUT',
@@ -12,13 +11,10 @@ const C2S = {
   PING: 'PING'
 };
 
-// S→C
 const S2C = {
   WELCOME: 'WELCOME',
   SNAPSHOT: 'SNAPSHOT',
-  EVENT: 'EVENT',
-  PONG: 'PONG',
-  ERROR: 'ERROR'
+  PONG: 'PONG'
 };
 
 function encode(obj) {

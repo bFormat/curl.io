@@ -276,7 +276,15 @@ export class Renderer {
     for (const [id, rec] of this.players) {
       if (!seen.has(id)) {
         this.scene.remove(rec.root);
-        rec.root.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
+        // 지오메트리·머티리얼·캔버스 텍스처(닉네임 스프라이트)까지 모두 해제
+        rec.root.traverse((o) => {
+          if (o.geometry) o.geometry.dispose();
+          const m = o.material;
+          if (m) {
+            if (m.map) m.map.dispose();
+            m.dispose();
+          }
+        });
         this.players.delete(id);
       }
     }
@@ -333,8 +341,11 @@ export class Renderer {
       return r;
     }
     const a = this._projAsset(ptype);
-    const mesh = new THREE.Mesh(a.geo, a.mat);
-    mesh.castShadow = false;       // 투사체는 그림자 캐스팅 안 함
+    // 점착폭탄만 매 프레임 emissive를 변조하므로 인스턴스별 머티리얼이 필요.
+    // (공유했더니 여러 폭탄이 마지막 한 개 기준으로 동기 깜빡임)
+    const mat = ptype === 'stickybomb' ? a.mat.clone() : a.mat;
+    const mesh = new THREE.Mesh(a.geo, mat);
+    mesh.castShadow = false;
     this.scene.add(mesh);
     return { mesh, ptype, spinAngle: Math.random() * 6.28, blink: 0 };
   }
